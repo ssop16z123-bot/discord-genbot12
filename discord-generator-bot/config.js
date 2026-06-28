@@ -1,17 +1,14 @@
+require("dotenv").config();
+
 module.exports = {
   TOKEN: process.env.TOKEN,
-
   CLIENT_ID: process.env.CLIENT_ID,
-
   GUILD_ID: process.env.GUILD_ID,
-
   OWNER_ID: process.env.OWNER_ID,
-
   GEN_ROLE_ID: process.env.GEN_ROLE_ID,
-
   LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID,
 
-  COOLDOWN_TIME: 30,
+  COOLDOWN_TIME: Number(process.env.COOLDOWN_TIME) || 30,
 
   COLORS: {
     SUCCESS: 0x57f287,
