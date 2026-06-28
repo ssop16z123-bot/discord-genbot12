@@ -1,3 +1,4 @@
+require("dotenv").config();
 /**
  * =============================================
  *  SLASH COMMAND DEPLOYMENT SCRIPT
