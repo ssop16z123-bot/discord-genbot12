@@ -1,0 +1,17 @@
+{
+  "name": "discord-generator-bot",
+  "version": "1.0.0",
+  "description": "A production-ready Discord.js v14 stock/generator bot using flat .txt files for storage (no database).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
