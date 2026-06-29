@@ -6,7 +6,7 @@ module.exports = {
   GEN_ROLE_ID: process.env.GEN_ROLE_ID || "YOUR_GEN_ROLE_ID_HERE",
   LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID || "YOUR_LOG_CHANNEL_ID_HERE",
 
-  COOLDOWN_TIME: Number(process.env.COOLDOWN_TIME) || 30,
+  COOLDOWN_TIME: Number(process.env.COOLDOWN_TIME) || 0.3,
 
   COLORS: {
     SUCCESS: 0x57f287,
