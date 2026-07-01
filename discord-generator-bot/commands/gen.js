@@ -1,8 +1,17 @@
 const { SlashCommandBuilder } = require("discord.js");
 const config = require("../config");
 const { successEmbed, errorEmbed, mainEmbed } = require("../utils/embeds");
-const { popStock, addStock, serviceExists, getStockCount } = require("../utils/stockManager");
-const { checkCooldown, setCooldown, formatRemaining } = require("../utils/cooldownManager");
+const {
+  popStock,
+  addStock,
+  serviceExists,
+  getStockCount,
+} = require("../utils/stockManager");
+const {
+  checkCooldown,
+  setCooldown,
+  formatRemaining,
+} = require("../utils/cooldownManager");
 const { canGenerate, isOwner } = require("../utils/permissions");
 const { logGeneration } = require("../utils/logger");
 const { serviceAutocomplete } = require("../utils/autocomplete");
@@ -26,36 +35,44 @@ module.exports = {
   async execute(interaction, client) {
     const service = interaction.options.getString("service");
 
-    // ---- 1. The service has to exist ----
+    // Service exists?
     if (!serviceExists(service)) {
       return interaction.reply({
-        embeds: [errorEmbed("Not Found", `No service named **${service}** exists.`)],
+        embeds: [
+          errorEmbed("Not Found", `No service named **${service}** exists.`),
+        ],
         ephemeral: true,
       });
     }
 
-    // ---- 2. Permission check — the owner always bypasses this ----
+    // Permission check
     if (!canGenerate(interaction.member)) {
       return interaction.reply({
         embeds: [
           errorEmbed(
             "Access Denied",
-            "You need the generator role to use this command.\nAsk a server admin for access."
+            "You need the generator role to use this command."
           ),
         ],
         ephemeral: true,
       });
     }
 
-    // ---- 3. Cooldown check — the owner always bypasses this ----
+    // Cooldown
     if (!isOwner(interaction.user.id)) {
-      const { onCooldown, remainingMs } = checkCooldown(interaction.user.id, config.COOLDOWN_TIME);
+      const { onCooldown, remainingMs } = checkCooldown(
+        interaction.user.id,
+        config.COOLDOWN_TIME
+      );
+
       if (onCooldown) {
         return interaction.reply({
           embeds: [
             errorEmbed(
               "On Cooldown",
-              `You need to wait **${formatRemaining(remainingMs)}** before generating again.`
+              `Please wait **${formatRemaining(
+                remainingMs
+              )}** before generating again.`
             ),
           ],
           ephemeral: true,
@@ -63,57 +80,118 @@ module.exports = {
       }
     }
 
-    // ---- 4. Stock check ----
+    // Stock check
     if (getStockCount(service) <= 0) {
       return interaction.reply({
-        embeds: [errorEmbed("Out of Stock", `**${service}** currently has no stock available.`)],
+        embeds: [
+          errorEmbed(
+            "Out of Stock",
+            `**${service}** currently has no stock available.`
+          ),
+        ],
         ephemeral: true,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ ephemeral: false });
 
-    // ---- 5. Pop one account out of the stock file ----
+    // Remove account from stock
     const account = popStock(service);
+
     if (!account) {
-      return interaction.editReply({
-        embeds: [errorEmbed("Out of Stock", `**${service}** currently has no stock available.`)],
-      });
-    }
-
-    // ---- 6. DM the account to the user ----
-    const dmEmbed = mainEmbed(
-      "📦 Your Account Is Ready",
-      `Here is your generated **${service}** account:\n\n\`\`\`${account}\`\`\``
-    ).addFields({ name: "Service", value: service, inline: true });
-
-    try {
-      await interaction.user.send({ embeds: [dmEmbed] });
-    } catch (err) {
-      // DMs are closed — put the account back so stock isn't lost, then tell the user.
-      addStock(service, [account]);
       return interaction.editReply({
         embeds: [
           errorEmbed(
-            "DMs Closed",
-            "I couldn't send you a DM. Please enable DMs from server members and try again."
+            "Out of Stock",
+            `**${service}** currently has no stock available.`
           ),
         ],
       });
     }
 
-    // ---- 7. Set cooldown, log, and confirm ----
+    // DM user
+    const dmEmbed = mainEmbed(
+      "🎁 Your Generated Account",
+      `Here is your **${service}** account:\n\n\`\`\`\n${account}\n\`\`\``
+    )
+      .addFields(
+        {
+          name: "📦 Service",
+          value: service,
+          inline: true,
+        },
+        {
+          name: "⚠️ Important",
+          value: "Do not share this account.",
+          inline: true,
+        }
+      )
+      .setTimestamp();
+
+    try {
+      await interaction.user.send({ embeds: [dmEmbed] });
+    } catch {
+      addStock(service, [account]);
+
+      return interaction.editReply({
+        embeds: [
+          errorEmbed(
+            "DMs Closed",
+            "Enable your DMs and try again."
+          ),
+        ],
+      });
+    }
+
+    // Cooldown
     if (!isOwner(interaction.user.id)) {
       setCooldown(interaction.user.id);
     }
 
     const stockRemaining = getStockCount(service);
-    await logGeneration(client, { user: interaction.user, service, stockRemaining });
+
+    await logGeneration(client, {
+      user: interaction.user,
+      service,
+      stockRemaining,
+    });
+
+    // Public message
+    const publicEmbed = mainEmbed(
+      "🎉 Item Generated",
+      "📩 **Sent to your DMs — Check your inbox.**"
+    )
+      .addFields(
+        {
+          name: "📦 Service",
+          value: `\`${service}\``,
+          inline: true,
+        },
+        {
+          name: "📂 Type",
+          value: "Account",
+          inline: true,
+        },
+        {
+          name: "👤 Generated By",
+          value: `${interaction.user}`,
+          inline: true,
+        },
+        {
+          name: "📉 Stock Remaining",
+          value: `${stockRemaining}`,
+          inline: true,
+        },
+        {
+          name: "⭐ Vouch",
+          value: "Please leave a vouch after using the account!",
+          inline: false,
+        }
+      )
+      .setTimestamp();
 
     return interaction.editReply({
-      embeds: [
-        successEmbed("Account Generated", `Check your DMs for your **${service}** account! 📬`),
-      ],
+      embeds: [publicEmbed],
     });
   },
 };
